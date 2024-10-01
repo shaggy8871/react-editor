@@ -52,18 +52,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ options, onSelect, visible, p
 
   return (
     <ul
+      className="contextMenu"
       style={{
-        position: "absolute",
         top: position.y,
         left: position.x,
-        border: "1px solid #ccc",
-        backgroundColor: "#fff",
-        listStyleType: "none",
-        padding: 0,
-        margin: 0,
-        fontFamily: "Arial, sans-serif",
-        fontSize: "14px",
-        boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
       }}
     >
       {options.map((option, index) => (
@@ -71,8 +63,6 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ options, onSelect, visible, p
           key={index}
           onClick={() => onSelect(option)}
           style={{
-            padding: "8px 12px",
-            cursor: "pointer",
             backgroundColor: index === selectedIndex ? "#f0f0f0" : "transparent",
           }}
         >

@@ -54,7 +54,7 @@ function applyStyle(style: string): void {
   let node = range.startContainer as HTMLElement;
 
   // Traverse up the DOM to find the nearest block element
-  while (node && !['DIV', 'P', 'H1', 'H2', 'UL', 'OL', 'BLOCKQUOTE', 'PRE'].includes(node.nodeName)) {
+  while (node && !['DIV', 'P', 'H1', 'H2', 'BLOCKQUOTE', 'PRE', 'UL', 'OL', 'LI'].includes(node.nodeName)) {
     node = node.parentElement as HTMLElement;
   }
 
@@ -72,39 +72,17 @@ function applyStyle(style: string): void {
     case 'Heading 2':
       wrapper = document.createElement('h2');
       break;
-    case 'Bullet List':
-      if (node.nodeName === 'OL') {
-        // Replace OL with UL
-        wrapper = document.createElement('ul');
-        Array.from(node.children).forEach(li => wrapper.appendChild(li.cloneNode(true)));
-      } else if (node.nodeName !== 'UL') {
-        wrapper = document.createElement('ul');
-        const li = document.createElement('li');
-        li.innerHTML = node.innerHTML;
-        wrapper.appendChild(li);
-      } else {
-        wrapper = document.createElement('li');
-      }
-      break;
-    case 'Numbered List':
-      if (node.nodeName === 'UL') {
-        // Replace UL with OL
-        wrapper = document.createElement('ol');
-        Array.from(node.children).forEach(li => wrapper.appendChild(li.cloneNode(true)));
-      } else if (node.nodeName !== 'OL') {
-        wrapper = document.createElement('ol');
-        const li = document.createElement('li');
-        li.innerHTML = node.innerHTML;
-        wrapper.appendChild(li);
-      } else {
-        wrapper = document.createElement('li');
-      }
-      break;
     case 'Quote':
       wrapper = document.createElement('blockquote');
       break;
     case 'Code Block':
       wrapper = document.createElement('pre');
+      break;
+    case 'Bullet List':
+      wrapper = document.createElement('ul');
+      break;
+    case 'Numbered List':
+      wrapper = document.createElement('ol');
       break;
     case 'Paragraph':
     default:
@@ -112,31 +90,66 @@ function applyStyle(style: string): void {
       break;
   }
 
-  // Preserve the content when wrapping
-  if (!['UL', 'OL'].includes(node.nodeName) && !['Bullet List', 'Numbered List'].includes(style)) {
-    wrapper.innerHTML = node.innerHTML;
+  // Handle special cases for bullets and numbering
+  if (style === 'Bullet List' || style === 'Numbered List') {
+    if (node.nodeName !== 'LI') {
+      const li = document.createElement('li');
+      li.innerHTML = node.innerHTML;
+      wrapper.appendChild(li);
+    } else {
+      // If already in a list, just change the list type
+      wrapper.innerHTML = node.parentElement!.innerHTML;
+      node.parentElement!.parentNode!.replaceChild(wrapper, node.parentElement!);
+      return;
+    }
+  } else {
+    // Preserve the content when wrapping
+    if (node.nodeName === 'UL' || node.nodeName === 'OL') {
+      // Concatenate all list items with <br> when converting from a list to a block element
+      const listItems = Array.from(node.children);
+      wrapper.innerHTML = listItems.map(item => item.innerHTML).join('<br>');
+    } else if (node.nodeName === 'LI') {
+      // For list items, go to the parent node first
+      const parentNode = node.parentElement;
+      if (parentNode && (parentNode.nodeName === 'UL' || parentNode.nodeName === 'OL')) {
+        const listItems = Array.from(parentNode.children);
+        wrapper.innerHTML = listItems.map(item => item.innerHTML).join('<br>');
+      } else {
+        wrapper.innerHTML = node.innerHTML;
+      }
+    } else {
+      wrapper.innerHTML = node.innerHTML;
+    }
   }
 
   // Replace the nearest block element with the new styled element
-  if (['Bullet List', 'Numbered List'].includes(style) && ['UL', 'OL'].includes(node.nodeName)) {
-    if (wrapper.nodeName === 'LI') {
-      node.appendChild(wrapper);
+  if (wrapper !== node) {
+    if (node.nodeName === 'LI') {
+      // If the node is a list item, replace its parent (the list) instead
+      node.parentNode?.parentNode?.replaceChild(wrapper, node.parentNode);
     } else {
       node.parentNode?.replaceChild(wrapper, node);
     }
-  } else {
-    node.parentNode?.replaceChild(wrapper, node);
   }
 
   // Move the cursor to the end of the inserted element
   selection.removeAllRanges();
   const newRange = document.createRange();
   newRange.selectNodeContents(wrapper);
-  newRange.collapse(false);
+
+  // If the wrapper is empty, add a <br> element to ensure the cursor is inside the block
+  if (wrapper.innerHTML.trim() === '') {
+    const br = document.createElement('br');
+    wrapper.appendChild(br);
+    newRange.setStartBefore(br);
+  } else {
+    newRange.collapse(false);
+  }
+
   selection.addRange(newRange);
 }
 
-const ParentComponent: React.FC = () => {
+const App: React.FC = () => {
   const [contextOptions, setContextOptions] = useState<string[]>([]);
   const [menuVisible, setMenuVisible] = useState<boolean>(false);
   const [menuPosition, setMenuPosition] = useState<Position>({ x: 0, y: 0 });
@@ -207,4 +220,4 @@ const ParentComponent: React.FC = () => {
   );
 };
 
-export default ParentComponent;
+export default App;

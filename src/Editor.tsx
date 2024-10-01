@@ -69,13 +69,7 @@ const Editor: React.FC<EditorProps> = ({ onAtKeyPress, onSlashKeyPress, onKeyPre
       onKeyUp={handleKeyUp}
       onKeyDown={handleKeyDown}
       className="editor"
-      style={{ 
-        minHeight: "200px", 
-        border: "1px solid #ccc", 
-        padding: "10px",
-        fontFamily: "Arial, Helvetica, sans-serif" 
-      }}
-      dangerouslySetInnerHTML={{ __html: '<div><br></div>' }}
+      dangerouslySetInnerHTML={{ __html: '<p><br></p>' }}
     />
   );
 };
