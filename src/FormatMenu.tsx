@@ -14,44 +14,89 @@ const FormatMenu: React.FC<FormatMenuProps> = ({ position, onFormat }) => {
     { label: '<>', format: 'monospace', value: 'monospace' }
   ];
 
+  const toggleFormat = (className: string) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return;
+
+    let commonAncestor: Node | null = null;
+
+    // Attempt to find the span from startContainer
+    if (range.startContainer.nodeType === Node.ELEMENT_NODE) {
+      const startElement = range.startContainer as HTMLElement;
+      if (startElement.classList.contains(className)) {
+        commonAncestor = startElement;
+      }
+    } else if (range.startContainer.parentElement?.classList.contains(className)) {
+      commonAncestor = range.startContainer.parentElement;
+    }
+
+    // Additionally check selection.anchorNode
+    if (!commonAncestor && selection.anchorNode) {
+      if (selection.anchorNode.nodeType === Node.ELEMENT_NODE) {
+        const anchorElement = selection.anchorNode as HTMLElement;
+        if (anchorElement.classList.contains(className)) {
+          commonAncestor = anchorElement;
+        }
+      } else if (selection.anchorNode.parentElement?.classList.contains(className)) {
+        commonAncestor = selection.anchorNode.parentElement;
+      }
+
+      // Also check firstElementChild of anchorNode
+      if (!commonAncestor && selection.anchorNode instanceof Element && selection.anchorNode.firstElementChild && selection.anchorNode.firstElementChild.classList.contains(className)) {
+        commonAncestor = selection.anchorNode.firstElementChild;
+      }
+    }
+
+    // If not found, attempt to find the span from endContainer
+    if (!commonAncestor) {
+      if (range.endContainer.nodeType === Node.ELEMENT_NODE) {
+        const endElement = range.endContainer as HTMLElement;
+        if (endElement.classList.contains(className)) {
+          commonAncestor = endElement;
+        }
+      } else if (range.endContainer.parentElement?.classList.contains(className)) {
+        commonAncestor = range.endContainer.parentElement;
+      }
+    }
+
+    // Additionally check firstElementChild of focusNode
+    if (!commonAncestor && selection.focusNode instanceof Element && selection.focusNode.firstElementChild && selection.focusNode.firstElementChild.classList.contains(className)) {
+      commonAncestor = selection.focusNode.firstElementChild;
+    }
+
+    // If still not found, fallback to commonAncestorContainer
+    if (!commonAncestor) {
+      commonAncestor = range.commonAncestorContainer;
+      if (commonAncestor.nodeType === Node.TEXT_NODE && commonAncestor.parentNode instanceof HTMLElement) {
+        commonAncestor = commonAncestor.parentNode;
+      }
+    }
+
+    if (commonAncestor instanceof HTMLElement && commonAncestor.classList.contains(className)) {
+      // Remove the span by replacing it with its child nodes
+      const parent = commonAncestor.parentNode;
+      while (commonAncestor.firstChild) {
+        parent?.insertBefore(commonAncestor.firstChild, commonAncestor);
+      }
+      parent?.removeChild(commonAncestor);
+    } else {
+      // Wrap the selected text in a span with the specified className
+      const span = document.createElement('span');
+      span.className = className;
+      try {
+        range.surroundContents(span);
+      } catch (e) {
+        console.error(`Failed to apply ${className} format:`, e);
+      }
+    }
+  };
+
   const handleFormat = (format: string, value?: string) => {
     if (format === 'monospace' && value) {
-      const selection = window.getSelection();
-      if (selection && !selection.isCollapsed) {
-        const range = selection.getRangeAt(0);
-        
-        console.log(range.startContainer, range.endContainer);
-        // Check if the start or end container is already a monospace span
-        const isMonospace = (node: Node): boolean => {
-          if (node.nodeType === Node.TEXT_NODE && node.parentNode) {
-            node = node.parentNode;
-          }
-          return node.nodeType === Node.ELEMENT_NODE &&
-                 (node as Element).tagName === 'SPAN' &&
-                 (node as Element).classList.contains('monospace');
-        };
-
-        const alreadyMonospace = isMonospace(range.startContainer) || isMonospace(range.endContainer);
-
-        if (!alreadyMonospace) {
-          // If not, create a new span element with class 'monospace'
-          const span = document.createElement('span');
-          span.className = 'monospace';
-          
-          // Extract the contents of the range and put them in the span
-          span.appendChild(range.extractContents());
-
-          // Insert the new span
-          range.insertNode(span);
-
-          // Move the selection to after the inserted span
-          selection.removeAllRanges();
-          const newRange = document.createRange();
-          newRange.setStartAfter(span);
-          newRange.collapse(true);
-          selection.addRange(newRange);
-        }
-      }
+      toggleFormat('monospace');
     } else {
       onFormat(format, value);
     }
