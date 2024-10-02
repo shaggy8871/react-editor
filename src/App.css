@@ -8,7 +8,27 @@
   min-height: 200px;
   border: 1px solid #ccc;
   padding: 10px;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, ".SFNSText-Regular", sans-serif;
+}
+.editor h1 {
+  font-size: 24px;
+  color: #050505;
+  font-weight: 400;
+}
+.editor h2 {
+  font-size: 15px;
+  color: #65676b;
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+}
+.editor .monospace {
+  font-family: monospace;
+  font-size: 14px;
+  background-color: #f0f0f0;
+}
+.editor .atWord {
+  background-color: aliceblue;
 }
 .contextMenu {
   position: absolute;

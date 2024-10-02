@@ -3,7 +3,7 @@ import Editor from './Editor';
 import ContextMenu from './ContextMenu';
 import './App.css';
 
-const atOptions: string[] = ["apple", "answer me", "banana", "cherry", "date", "elderberry"]; // Example options
+const atOptions: string[] = ["apple", "answer me", "aviary", "banana", "cherry", "date", "elderberry"];
 const slashOptions: string[] = ["Paragraph", "Heading 1", "Heading 2", "Bullet List", "Numbered List", "Quote", "Code Block"];
 
 interface Position {
@@ -11,9 +11,14 @@ interface Position {
   y: number;
 }
 
+interface CursorPosition {
+  node: Node | null;
+  offset: number;
+}
+
 function insertTextAtCursor(text: string, replaceLength: number): void {
   const sel = window.getSelection();
-  if (sel === null) return;
+  if (sel === null || sel.rangeCount === 0) return;
   const range = sel.getRangeAt(0);
   const startOffset = Math.max(0, range.startOffset - replaceLength);
   range.setStart(range.startContainer, startOffset);
@@ -21,6 +26,30 @@ function insertTextAtCursor(text: string, replaceLength: number): void {
   const node = document.createTextNode(text);
   range.insertNode(node);
   range.setStartAfter(node);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function insertElementAtCursor(element: HTMLElement, replaceLength: number): void {
+  const sel = window.getSelection();
+  if (sel === null) return;
+  const range = sel.getRangeAt(0);
+  const startOffset = Math.max(0, range.startOffset - replaceLength);
+  range.setStart(range.startContainer, startOffset);
+  range.deleteContents();
+  range.insertNode(element);
+  
+  // Create a new text node with a single space
+  const spaceNode = document.createTextNode('\u00A0');
+  
+  // Insert the space node after the element
+  range.setStartAfter(element);
+  range.insertNode(spaceNode);
+  
+  // Move the cursor after the space
+  range.setStartAfter(spaceNode);
+  range.collapse(true);
+  
   sel.removeAllRanges();
   sel.addRange(range);
 }
@@ -155,6 +184,7 @@ const App: React.FC = () => {
   const [menuPosition, setMenuPosition] = useState<Position>({ x: 0, y: 0 });
   const filterTextRef = useRef<string>('');
   const [menuType, setMenuType] = useState<'at' | 'slash'>('at');
+  const [savedCursorPosition, setSavedCursorPosition] = useState<CursorPosition | null>(null);
 
   const handleSpecialKeyPress = (text: string, type: 'at' | 'slash'): void => {
     // Show context menu below the current line
@@ -183,23 +213,51 @@ const App: React.FC = () => {
   };
 
   const handleOptionSelect = (option: string): void => {
+    // Restore the cursor position
+    if (savedCursorPosition) {
+      const selection = window.getSelection();
+      if (selection && savedCursorPosition.node) {
+        const range = document.createRange();
+        range.setStart(savedCursorPosition.node, savedCursorPosition.offset);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }
+
     const replaceLength = filterTextRef.current.length + 1; // +1 for '@' or '/'
     if (menuType === 'at') {
-      // Replace '@' and filter text with the selected option
-      insertTextAtCursor(option, replaceLength);
+      // Create a span element for the @ option
+      const span = document.createElement('span');
+      span.className = 'atWord';
+      span.textContent = option;
+      insertElementAtCursor(span, replaceLength);
     } else {
       // Remove '/' before applying the slash command
+      // Create an empty span element instead of a text node
       insertTextAtCursor('', replaceLength);
       // Apply style for slash commands
       applyStyle(option);
     }
     setMenuVisible(false);
     setContextOptions([]);
+    setSavedCursorPosition(null);
   };
 
   const handleHideMenu = (): void => {
     setMenuVisible(false);
     setContextOptions([]);
+  };
+
+  const saveCursorPosition = (): void => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      setSavedCursorPosition({
+        node: range.startContainer,
+        offset: range.startOffset,
+      });
+    }
   };
 
   return (
@@ -208,6 +266,7 @@ const App: React.FC = () => {
         onAtKeyPress={(text) => handleSpecialKeyPress(text, 'at')}
         onSlashKeyPress={(text) => handleSpecialKeyPress(text, 'slash')}
         onKeyPress={handleKeyPress}
+        onBlur={saveCursorPosition}
         hideMenu={handleHideMenu}
       />
       <ContextMenu

@@ -8,43 +8,33 @@ interface ContextMenuProps {
 }
 
 const ContextMenu: React.FC<ContextMenuProps> = ({ options, onSelect, visible, position }) => {
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
   useEffect(() => {
-    if (selectedIndex === null || selectedIndex >= options.length) {
-      setSelectedIndex(0);
-    }
-  }, [options, selectedIndex]);
+    setSelectedIndex(0);
+  }, [options]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (visible) {
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex((prevIndex) => {
-          if (prevIndex === null) return options.length - 1;
-          return prevIndex > 0 ? prevIndex - 1 : options.length - 1;
-        });
+        setSelectedIndex((prevIndex) => (prevIndex > 0 ? prevIndex - 1 : options.length - 1));
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex((prevIndex) => {
-          if (prevIndex === null) return 0;
-          return prevIndex < options.length - 1 ? prevIndex + 1 : 0;
-        });
+        setSelectedIndex((prevIndex) => (prevIndex < options.length - 1 ? prevIndex + 1 : 0));
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (selectedIndex !== null && selectedIndex >= 0 && selectedIndex < options.length) {
+        if (options.length > 0) {
           onSelect(options[selectedIndex]);
-        } else if (options.length > 0) {
-          onSelect(options[0]);
         }
       }
     }
   }, [options, selectedIndex, onSelect, visible]);
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [handleKeyDown]);
 
@@ -62,8 +52,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ options, onSelect, visible, p
         <li
           key={index}
           onClick={() => onSelect(option)}
+          onMouseEnter={() => setSelectedIndex(index)}
           style={{
-            backgroundColor: index === selectedIndex ? "#f0f0f0" : "transparent",
+            backgroundColor: index === selectedIndex ? "#e0e0e0" : "transparent",
+            cursor: 'pointer',
           }}
         >
           {option}
